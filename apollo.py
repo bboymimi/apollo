@@ -19,5 +19,10 @@ def doc(action: str, file_name: str, llm: str = "openai",
         print("Invalid action")
 
 
+@app.command()
+def rephrase(file_name: str, action: str = "business", llm: str = "openai"):
+    print("Rephrasing the question")
+
+
 if __name__ == "__main__":
     app()
