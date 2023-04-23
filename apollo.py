@@ -2,6 +2,7 @@
 import typer
 
 from apollo.tools.document_qa import DocumentQA
+from apollo.tools.rephrase_article import RephraseArticle
 
 app = typer.Typer()
 
@@ -20,8 +21,12 @@ def doc(action: str, file_name: str, llm: str = "openai",
 
 
 @app.command()
-def rephrase(file_name: str, action: str = "business", llm: str = "openai"):
-    print("Rephrasing the question")
+def rephrase(file_name: str, debug: bool = False, tone: str = "business"):
+    """Rephrase the article"""
+
+    print(f"Rephrasing the article {file_name}")
+    rephrase_article = RephraseArticle()
+    rephrase_article.run(file_name, tone, debug)
 
 
 if __name__ == "__main__":
