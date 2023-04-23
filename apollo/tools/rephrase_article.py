@@ -1,5 +1,6 @@
 """This script demonstrates how to to rephrase a document."""
 
+import os
 from langchain import OpenAI
 from langchain.chains.llm import LLMChain
 from langchain.document_loaders import UnstructuredFileLoader
@@ -81,6 +82,10 @@ class RephraseArticle:
 
         llm_model = OpenAI(openai_api_key=OPENAI_API_KEY,
                            temperature=1, max_tokens=-1)
+        # check if file_name is a valid file
+        if not os.path.isfile(file_name):
+            print(f"File {file_name} does not exist")
+            return
         loader = UnstructuredFileLoader(file_name)
         doc = loader.load()
         content = doc[0].page_content
