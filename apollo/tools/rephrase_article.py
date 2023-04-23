@@ -2,6 +2,7 @@
 
 import os
 from langchain import OpenAI
+from langchain.callbacks import get_openai_callback
 from langchain.chains.llm import LLMChain
 from langchain.document_loaders import UnstructuredFileLoader
 from langchain.docstore.document import Document
@@ -56,7 +57,7 @@ CASUAL_TEMPLATE = ("Rephrase the following article by a casual and"
 class RephraseArticle:
     """A class to handle document QA tasks."""
 
-    def doc_summary(self, docs):
+    def doc_summary(self, msg, docs, llm_model, debug):
         """
         Generate a summary of the given document.
 
@@ -66,14 +67,18 @@ class RephraseArticle:
         Returns:
             None
         """
-
+        if not debug:
+            return
+        print(msg)
         print(f"You have {len(docs)} document(s)")
 
         # this is a list comprehension
         num_words = sum([len(doc.page_content.split(" ")) for doc in docs])
+        num_tokens = llm_model.get_num_tokens(
+            "\n".join([doc.page_content for doc in docs]))
 
         # print out words count and token count (num_words * (4/3))
-        print(f"You have roughly {num_words} words or {num_words * (4 / 3)}"
+        print(f"You have roughly {num_words} words or {num_tokens}"
               f" tokens in your docs")
         print()
 
@@ -89,24 +94,37 @@ class RephraseArticle:
         loader = UnstructuredFileLoader(file_name)
         doc = loader.load()
         content = doc[0].page_content
-        self.doc_summary(doc)
         if tone == "business":
-            print("Rephrasing the document in a business tone:")
+            print("Rephrasing the document in a business tone")
             template = BUSINESS_TEMPLATE
             prompt = PromptTemplate(template=template, input_variables=[
                                     "content"])
+            doc.append(Document(page_content=template,
+                       metadata={"source": None}))
         elif tone == "casual":
-            print("Rephrasing the document in a casual tone:")
+            print("Rephrasing the document in a casual tone")
             template = CASUAL_TEMPLATE
             prompt = PromptTemplate(template=template, input_variables=[
                                     "content"])
+            doc.append(Document(page_content=template,
+                       metadata={"source": None}))
+        self.doc_summary(
+            "original prompt template + article summary:", doc, llm_model, debug)
 
         llm_chain = LLMChain(prompt=prompt, llm=llm_model, verbose=debug)
+
+        if debug:
+            with get_openai_callback() as cb:
+                result = llm_chain.predict(content=content)
+                print(f"Total Tokens: {cb.total_tokens}")
+                print(f"Prompt Tokens: {cb.prompt_tokens}")
+                print(f"Completion Tokens: {cb.completion_tokens}")
+                print(f"Total Cost (USD): ${cb.total_cost}")
 
         result = llm_chain.predict(content=content)
         doc = [Document(page_content=result, metadata={"source": None})]
 
-        self.doc_summary(doc)
+        self.doc_summary("rephrased article summary:", doc, llm_model, debug)
         print(f"\"{result}\"\n")
 
         # Output the result into a file with designated directory
