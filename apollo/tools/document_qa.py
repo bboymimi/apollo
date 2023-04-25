@@ -78,10 +78,8 @@ class DocumentQA:
         print(f"You have roughly {num_words} words in your docs")
         print()
 
-    def run(self, name: str, llm: str = "openai",
+    def load_llm(self, collection_name: str, llm: str = "openai",
             persist_directory: str = "./chroma"):
-        """Remove the path from the name also the subfix with .*"""
-        name = name.split("/")[-1].split(".")[0]
 
         llm_model = OpenAI(openai_api_key=OPENAI_API_KEY)
 
@@ -99,7 +97,7 @@ class DocumentQA:
             print("Using default OpenAI embedding model")
             embeddings = OpenAIEmbeddings(openai_api_key=OPENAI_API_KEY)
         docsearch = Chroma(
-            collection_name=name,
+            collection_name=collection_name,
             embedding_function=embeddings,
             persist_directory=persist_directory,
         )
@@ -121,6 +119,15 @@ class DocumentQA:
             prompt=prompt,
         )
 
+        return docsearch, chain
+
+    def run(self, name: str, llm: str = "openai",
+            persist_directory: str = "./chroma"):
+        """Remove the path from the name also the subfix with .*"""
+        name = name.split("/")[-1].split(".")[0]
+
+        docsearch, chain = self.load_llm(name, llm, persist_directory)
+
         while True:
             question = input("Ask> ")
 
@@ -135,12 +142,22 @@ class DocumentQA:
                 return_only_outputs=True)
             print(result["output_text"])
 
-    def update(self, name: str, llm: str = "openai",
-               persist_directory: str = "./chroma"):
-        """Load the document from the file"""
-        loader = UnstructuredFileLoader(name)
-        doc = loader.load()
+    def get_answer(self, name, question: str, llm: str = "openai",
+            persist_directory: str = "./chroma"):
+        """Remove the path from the name also the subfix with .*"""
+        name = name.split("/")[-1].split(".")[0]
+        docsearch, chain = self.load_llm(name)
 
+        doc = docsearch.similarity_search(question, k=5)
+        doc.append(Document(page_content=question,
+                   metadata={"source": None}))
+        result = chain(
+            {"input_documents": doc, "question": question},
+            return_only_outputs=True)
+        return result["output_text"]
+
+    def update_vectorstore(self, name: str, doc, llm: str = "openai",
+               persist_directory: str = "./chroma"):
         # Show the summary of the document
         self.doc_summary(doc)
         spliter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
@@ -174,3 +191,18 @@ class DocumentQA:
 
         # Persist the vector store
         docsearch.persist()
+
+    def update_text(self, name: str, text: str, llm: str = "openai",
+                    persist_directory: str = "./chroma"):
+        """Load string directly"""
+        metadata = {"source": name}
+        doc = [Document(page_content=text, metadata=metadata)]
+        self.update_vectorstore(name, doc, llm, persist_directory)
+
+    def update_file(self, name: str, llm: str = "openai",
+                    persist_directory: str = "./chroma"):
+        """Load the document from the file"""
+        loader = UnstructuredFileLoader(name)
+        doc = loader.load()
+        self.update_vectorstore(name, doc, llm, persist_directory)
+
