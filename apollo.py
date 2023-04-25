@@ -40,7 +40,10 @@ def web(debug: bool = False, llm: str = "openai", tone: str = "business"):
 
     name, text, model = web.get_file()
     if name != None and text != None:
-        d_qa.update_text(name, text, llm=model)
+        with st.empty():
+            st.write("Updating...")
+            d_qa.update_text(name, text, llm=model)
+            st.write("Done")
 
     question = web.get_question()
 

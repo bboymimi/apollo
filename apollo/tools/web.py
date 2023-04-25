@@ -15,7 +15,10 @@ class Web:
         upload = f_col.file_uploader(label="Upload your text file here")
         option = opt_col.selectbox(
                 'LLM model',
-                ('openai', 'huggingface'))
+        #        ('openai', 'huggingface'))
+                ('openai', 'not available'))
+        # TODO: set to openai for now, if other LLM model is supported, remove it
+        option = "openai"
         button_col, buf1, buf2 = st.columns([1, 1, 2])
         button_doc = button_col.button("Update to vectorstore")
 
